@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const ivs = require\\('@aws-sdk/client-ivs'\\); console.log\\(Object.keys\\(ivs\\).filter\\(k => k.includes\\('IVS'\\) || k.includes\\('Client'\\) || k.includes\\('Metadata'\\)\\).join\\('\\\\n'\\)\\);\")"
+    ]
+  }
+}

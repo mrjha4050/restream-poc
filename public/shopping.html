@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Shopping</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="shopping.css">
+</head>
+<body>
+  <div class="container">
+
+    <header class="header">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <h1 style="margin:0; font-size:1.3rem;">🛍️ Live Shopping</h1>
+        <a href="/" style="font-size:0.85rem; color:var(--text-secondary); text-decoration:none;">← Dashboard</a>
+      </div>
+      <span class="status-badge" id="playerBadge" style="display:none;">
+        <span class="status-dot" id="playerDot"></span>
+        <span id="playerStatusText">Connecting...</span>
+      </span>
+    </header>
+
+    <!-- Setup panel -->
+    <section class="panel setup-panel" id="setupPanel">
+      <h2 style="margin:0 0 20px; font-size:1.1rem;">Stream Setup</h2>
+      <div class="form-group">
+        <label for="playbackUrl">IVS Playback URL</label>
+        <input type="text" id="playbackUrl" class="input-field"
+               placeholder="https://[hash].m-[region].ivs.aws/[key]/master.m3u8" />
+      </div>
+      <div class="form-group">
+        <label for="channelArnInput">Channel ARN</label>
+        <input type="text" id="channelArnInput" class="input-field"
+               placeholder="arn:aws:ivs:us-east-1:123456789012:channel/AbcXYZ" />
+      </div>
+      <div class="button-group">
+        <button id="connectBtn" class="btn btn-primary">Connect Stream</button>
+      </div>
+      <div id="setupError" class="error-box" style="display:none; margin-top:14px;"></div>
+    </section>
+
+    <!-- Main stage (hidden until connected) -->
+    <div class="shopping-stage" id="shoppingStage" style="display:none;">
+
+      <!-- Left: video + overlays -->
+      <div class="video-col">
+        <div class="video-wrapper" id="videoWrapper">
+          <video id="videoPlayer" playsinline></video>
+
+          <!-- Product card overlay (bottom-right) -->
+          <div class="overlay product-overlay" id="productOverlay" style="display:none;">
+            <div class="product-card">
+              <div class="product-emoji" id="productEmoji"></div>
+              <div class="product-info">
+                <div class="product-name" id="productName"></div>
+                <div class="product-pricing">
+                  <span class="product-price" id="productPrice"></span>
+                  <span class="product-original-price" id="productOriginalPrice"></span>
+                </div>
+                <a id="productUrl" href="#" class="btn btn-primary product-buy-btn" target="_blank">Buy Now</a>
+              </div>
+              <button class="overlay-dismiss" id="productDismiss">✕</button>
+              <div class="progress-bar-container">
+                <div class="progress-bar" id="productProgress"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Discount timer overlay (top-center) -->
+          <div class="overlay timer-overlay" id="timerOverlay" style="display:none;">
+            <div class="timer-card">
+              <div class="timer-discount-label" id="timerDiscount"></div>
+              <div class="timer-countdown" id="timerCountdown">00:00</div>
+              <div class="timer-code" id="timerCode"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="player-status-bar">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Connecting...</span>
+          <button id="disconnectBtn" class="btn btn-sm" style="margin-left:auto; background:var(--surface-alt); border:1px solid var(--border);">Disconnect</button>
+        </div>
+      </div>
+
+      <!-- Right: host controls -->
+      <div class="controls-col">
+
+        <section class="panel host-panel">
+          <h2 style="margin:0 0 16px; font-size:1rem;">Products</h2>
+          <div class="products-grid" id="productsGrid"></div>
+        </section>
+
+        <section class="panel host-panel">
+          <h2 style="margin:0 0 16px; font-size:1rem;">Discount Timer</h2>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="timerDuration">Duration (seconds)</label>
+            <input type="number" id="timerDuration" class="input-field"
+                   value="300" min="10" max="3600" style="width:100px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label for="timerCodeInput">Discount Code</label>
+            <input type="text" id="timerCodeInput" class="input-field"
+                   placeholder="SAVE20" style="text-transform:uppercase;" />
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label for="timerDiscountInput">Discount Label</label>
+            <input type="text" id="timerDiscountInput" class="input-field"
+                   placeholder="20% OFF" />
+          </div>
+          <button id="startTimerBtn" class="btn btn-primary" style="width:100%;">Start Timer</button>
+          <div id="timerFeedback" style="margin-top:10px; font-size:0.82rem; display:none;"></div>
+        </section>
+
+        <section class="panel host-panel">
+          <h2 style="margin:0 0 12px; font-size:1rem;">Overlay Log</h2>
+          <div class="logs-container" id="overlayLog" style="max-height:180px;">
+            <div class="log-entry" style="color:var(--text-tertiary);">No overlays sent yet.</div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://player.live-video.net/1.28.0/amazon-ivs-player.min.js"></script>
+  <script src="shopping.js"></script>
+</body>
+</html>
