@@ -1,0 +1,12 @@
+services:
+  restream:
+    build: .
+    container_name: restream-service
+    ports:
+      - "${RESTREAM_PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+    restart: unless-stopped
