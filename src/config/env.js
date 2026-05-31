@@ -26,6 +26,14 @@ const config = {
       process.env.GOOGLE_REDIRECT_URI ||
       `http://localhost:${process.env.PORT || 3000}/auth/youtube/callback`,
   },
+  facebook: {
+    appId: process.env.FACEBOOK_APP_ID || '',
+    appSecret: process.env.FACEBOOK_APP_SECRET || '',
+    redirectUri:
+      process.env.FACEBOOK_REDIRECT_URI ||
+      `http://localhost:${process.env.PORT || 3000}/auth/facebook/callback`,
+    graphVersion: process.env.FACEBOOK_GRAPH_VERSION || 'v25.0',
+  },
   logBufferSize: parseInt(process.env.LOG_BUFFER_SIZE || '200', 10),
 };
 
@@ -39,6 +47,12 @@ function reloadConfig() {
   config.google.redirectUri =
     process.env.GOOGLE_REDIRECT_URI ||
     `http://localhost:${process.env.PORT || 3000}/auth/youtube/callback`;
+  config.facebook.appId = process.env.FACEBOOK_APP_ID || '';
+  config.facebook.appSecret = process.env.FACEBOOK_APP_SECRET || '';
+  config.facebook.redirectUri =
+    process.env.FACEBOOK_REDIRECT_URI ||
+    `http://localhost:${process.env.PORT || 3000}/auth/facebook/callback`;
+  config.facebook.graphVersion = process.env.FACEBOOK_GRAPH_VERSION || 'v25.0';
   config.logBufferSize = parseInt(process.env.LOG_BUFFER_SIZE || '200', 10);
 }
 

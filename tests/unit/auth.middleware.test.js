@@ -27,6 +27,8 @@ describe('auth.middleware', () => {
       expect(serviceAuth.isPublicPath('/ready')).toBe(true);
       expect(serviceAuth.isPublicPath('/auth/youtube')).toBe(true);
       expect(serviceAuth.isPublicPath('/auth/youtube/callback')).toBe(true);
+      expect(serviceAuth.isPublicPath('/auth/facebook')).toBe(true);
+      expect(serviceAuth.isPublicPath('/auth/facebook/callback')).toBe(true);
       expect(serviceAuth.isPublicPath('/platforms')).toBe(false);
     });
   });

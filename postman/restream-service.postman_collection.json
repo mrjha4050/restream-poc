@@ -1,0 +1,380 @@
+{
+  "info": {
+    "_postman_id": "restream-service-collection",
+    "name": "Restream Service",
+    "description": "API collection for the Restream microservice — rebroadcast AWS IVS streams to YouTube, Twitch, Facebook, or custom RTMP.\n\n## Auth\nMost routes require `X-Service-Key` when `SERVICE_API_KEY` is set in `.env`. In development with no key configured, the header is optional.\n\nPublic routes (no service key): `/health`, `/ready`, `/auth/youtube/*`, `/auth/facebook/*`\n\n## OAuth sessions\nYouTube and Facebook OAuth use server-side sessions (cookies). Enable **Cookies** in Postman settings and complete OAuth in a browser first, or use Postman's cookie jar after visiting the OAuth callback URL.\n\n## Variables\n- `baseUrl` — default `http://localhost:3000`\n- `serviceKey` — value of `SERVICE_API_KEY` from `.env`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "serviceKey",
+      "value": ""
+    },
+    {
+      "key": "ivsUrl",
+      "value": "https://your-playback-channel.us-east-1.playback.live-video.net/api/video/v1/us-east-1.xxxxx/channel.xxxxx.m3u8"
+    },
+    {
+      "key": "streamKey",
+      "value": "your-stream-key"
+    },
+    {
+      "key": "facebookPageId",
+      "value": "your-facebook-page-id"
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-Service-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{serviceKey}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Liveness probe. Returns service status and uptime."
+          }
+        },
+        {
+          "name": "Ready Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/ready",
+            "description": "Readiness probe. Checks FFmpeg availability and OAuth configuration."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Platforms & Streams",
+      "item": [
+        {
+          "name": "List Platforms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/platforms",
+            "description": "Returns supported platforms (youtube, twitch, facebook, custom) and their RTMP base URLs."
+          }
+        },
+        {
+          "name": "Get Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/status",
+            "description": "Current streaming state for all platforms — running, uptime, restart counts."
+          }
+        },
+        {
+          "name": "Start Platform (Manual Key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ivsUrl\": \"{{ivsUrl}}\",\n  \"key\": \"{{streamKey}}\",\n  \"autoRestart\": true,\n  \"maxRestarts\": 5\n}"
+            },
+            "url": "{{baseUrl}}/platforms/youtube/start",
+            "description": "Start FFmpeg restream with a manual stream key.\n\nReplace `youtube` with `twitch`, `facebook`, or `custom`.\n\nFor `custom`, also pass `customUrl` (RTMP base URL)."
+          }
+        },
+        {
+          "name": "Start Custom Platform",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ivsUrl\": \"{{ivsUrl}}\",\n  \"key\": \"{{streamKey}}\",\n  \"customUrl\": \"rtmp://your-server/live/\",\n  \"autoRestart\": true,\n  \"maxRestarts\": 5\n}"
+            },
+            "url": "{{baseUrl}}/platforms/custom/start",
+            "description": "Start stream to a custom RTMP endpoint."
+          }
+        },
+        {
+          "name": "Stop Platform",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/platforms/youtube/stop",
+            "description": "Stop streaming to a single platform. Replace `youtube` with platform id.\n\nFor Facebook OAuth streams, also ends the live broadcast via Graph API."
+          }
+        },
+        {
+          "name": "Stop All Platforms",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/stop",
+            "description": "Stop all active FFmpeg outputs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        {
+          "name": "Get Historical Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/logs",
+            "description": "Returns the in-memory log buffer (JSON array)."
+          }
+        },
+        {
+          "name": "Get Historical Logs (alias)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/logs/",
+            "description": "Same as GET /logs — alternate route."
+          }
+        },
+        {
+          "name": "Stream Logs (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": "{{baseUrl}}/stream-logs",
+            "description": "Server-Sent Events endpoint for live FFmpeg and connection logs.\n\nNote: Postman may not display SSE streams well — use curl or a browser EventSource for testing."
+          }
+        },
+        {
+          "name": "Stream Logs (alias)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": "{{baseUrl}}/logs/stream",
+            "description": "Same as GET /stream-logs — alternate route."
+          }
+        }
+      ]
+    },
+    {
+      "name": "YouTube OAuth",
+      "item": [
+        {
+          "name": "Start OAuth (Browser)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/youtube",
+            "description": "Opens Google OAuth consent screen. **Use in a browser**, not Postman — redirects to Google then back to `/auth/youtube/callback`."
+          }
+        },
+        {
+          "name": "OAuth Status",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/youtube/status",
+            "description": "Check if YouTube is connected. Requires session cookie from OAuth flow.\n\nResponse: `{ connected, email }`"
+          }
+        },
+        {
+          "name": "Fetch Key (no auto-start)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{baseUrl}}/auth/youtube/fetch-key",
+            "description": "Fetch YouTube stream key without starting FFmpeg.\n\nRequires OAuth session cookie."
+          }
+        },
+        {
+          "name": "Fetch Key & Start Stream",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ivsUrl\": \"{{ivsUrl}}\",\n  \"autoRestart\": true,\n  \"maxRestarts\": 5\n}"
+            },
+            "url": "{{baseUrl}}/auth/youtube/fetch-key",
+            "description": "Fetch YouTube stream key and auto-start FFmpeg.\n\nRequires OAuth session cookie and a pre-created live stream in YouTube Studio."
+          }
+        },
+        {
+          "name": "Disconnect YouTube",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/youtube/disconnect",
+            "description": "Clear YouTube OAuth session."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Facebook OAuth",
+      "item": [
+        {
+          "name": "Start OAuth (Browser)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/facebook",
+            "description": "Opens Facebook OAuth consent screen. **Use in a browser** — redirects to Facebook then back to `/auth/facebook/callback`."
+          }
+        },
+        {
+          "name": "OAuth Status",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/facebook/status",
+            "description": "Check Facebook connection and selected Page.\n\nResponse: `{ connected, name, pageId, pageName }`"
+          }
+        },
+        {
+          "name": "List Pages",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/facebook/pages",
+            "description": "List Facebook Pages the authenticated user can manage.\n\nRequires OAuth session cookie."
+          }
+        },
+        {
+          "name": "Select Page",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pageId\": \"{{facebookPageId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/facebook/select-page",
+            "description": "Select target Facebook Page for streaming.\n\nRequires OAuth session cookie."
+          }
+        },
+        {
+          "name": "Start Live (no auto-start)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"My Live Stream\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/facebook/start-live",
+            "description": "Create Facebook LiveVideo and return `secureStreamUrl` without starting FFmpeg.\n\nRequires OAuth session + selected Page."
+          }
+        },
+        {
+          "name": "Start Live & Stream",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ivsUrl\": \"{{ivsUrl}}\",\n  \"title\": \"My Live Stream\",\n  \"autoRestart\": true,\n  \"maxRestarts\": 5\n}"
+            },
+            "url": "{{baseUrl}}/auth/facebook/start-live",
+            "description": "Create Facebook LiveVideo and auto-start FFmpeg to the secure RTMPS URL.\n\nRequires OAuth session + selected Page."
+          }
+        },
+        {
+          "name": "Disconnect Facebook",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/facebook/disconnect",
+            "description": "Clear Facebook OAuth session and selected Page."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -6,6 +6,7 @@ const logsRoutes = require('./logs.route');
 const authRoutes = require('./auth.route');
 const streamsController = require('../controllers/streams.controller');
 const logsController = require('../controllers/logs.controller');
+const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.use('/platforms', platformsRoutes);
 router.use('/platforms', streamsRoutes);
 
 router.get('/status', streamsController.getStatus);
-router.post('/stop', streamsController.stopAll);
+router.post('/stop', asyncHandler(streamsController.stopAll));
 
 router.get('/logs', logsController.getHistoricalLogs);
 router.get('/stream-logs', logsController.streamLogs);

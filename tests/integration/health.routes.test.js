@@ -12,6 +12,10 @@ jest.mock('../../src/services/youtube.service', () => ({
   isConfigured: jest.fn(() => false),
 }));
 
+jest.mock('../../src/services/facebook.service', () => ({
+  isConfigured: jest.fn(() => false),
+}));
+
 const request = require('supertest');
 const ffmpegService = require('../../src/services/ffmpeg.service');
 const { createTestApp } = require('../helpers/createTestApp');
@@ -51,6 +55,7 @@ describe('health routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('ready');
       expect(res.body.checks.ffmpeg).toBe(true);
+      expect(res.body.checks.facebookOAuth).toBe(false);
     });
 
     it('returns not_ready when ffmpeg is unavailable', async () => {

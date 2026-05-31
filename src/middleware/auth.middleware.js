@@ -4,6 +4,7 @@ const PUBLIC_PATH_PREFIXES = [
   '/health',
   '/ready',
   '/auth/youtube',
+  '/auth/facebook',
 ];
 
 function isPublicPath(path) {

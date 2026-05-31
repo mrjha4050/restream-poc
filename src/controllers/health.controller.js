@@ -2,6 +2,7 @@ const { checkFfmpegAvailable } = require('../services/ffmpeg.service');
 const { getListenerCount } = require('../services/log.service');
 const { config } = require('../config/env');
 const youtubeService = require('../services/youtube.service');
+const facebookService = require('../services/facebook.service');
 
 function health(req, res) {
   res.json({
@@ -17,6 +18,7 @@ function ready(req, res) {
   const checks = {
     ffmpeg: ffmpegOk,
     youtubeOAuth: youtubeService.isConfigured(),
+    facebookOAuth: facebookService.isConfigured(),
   };
 
   const ready = ffmpegOk;

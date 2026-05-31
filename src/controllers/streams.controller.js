@@ -4,9 +4,28 @@ const {
   PLATFORMS,
 } = require('../constants/platforms');
 const ffmpegService = require('../services/ffmpeg.service');
+const facebookService = require('../services/facebook.service');
+const { addLog } = require('../services/log.service');
 
 function clampMaxRestarts(value) {
   return Math.min(20, Math.max(1, parseInt(value, 10) || 5));
+}
+
+async function endFacebookLiveIfActive(req) {
+  const liveVideoId = req.session?.facebookLiveVideoId;
+  const page = req.session?.facebookPage;
+  if (!liveVideoId || !page) {
+    return;
+  }
+
+  try {
+    await facebookService.endLiveVideo(page.accessToken, liveVideoId);
+    addLog('Facebook live broadcast ended', 'disconnection', 'facebook');
+  } catch (err) {
+    addLog(`Facebook end broadcast failed: ${err.message}`, 'error', 'facebook');
+  } finally {
+    delete req.session.facebookLiveVideoId;
+  }
 }
 
 function startPlatform(req, res) {
@@ -56,18 +75,27 @@ function startPlatform(req, res) {
   });
 }
 
-function stopPlatform(req, res) {
+async function stopPlatform(req, res) {
   const platformId = req.params.id;
   if (!isValidPlatform(platformId)) {
     return res.status(404).json({ message: 'Unknown platform' });
   }
+
+  if (platformId === 'facebook') {
+    await endFacebookLiveIfActive(req);
+  }
+
   if (!ffmpegService.stopPlatform(platformId)) {
     return res.status(404).json({ message: 'No active stream for this platform' });
   }
   res.json({ message: 'Platform output stopped', platform: platformId });
 }
 
-function stopAll(req, res) {
+async function stopAll(req, res) {
+  if (ffmpegService.isPlatformActive('facebook')) {
+    await endFacebookLiveIfActive(req);
+  }
+
   const count = ffmpegService.stopAllPlatforms();
   res.json({ message: count ? `Stopped ${count} output(s)` : 'No active streams' });
 }
