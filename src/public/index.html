@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restream POC Tester</title>
+  <link rel="stylesheet" href="/style.css?v=7" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <h1>Restream POC</h1>
+      <span class="subtitle">IVS → YouTube, Twitch, Facebook</span>
+    </div>
+    <div class="header-right">
+      <div class="badge" id="health-badge">Checking…</div>
+      <div class="badge" id="ready-badge">Checking…</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card config-card">
+      <h2>Stream Input</h2>
+      <div class="form-grid">
+        <label class="field span-2">
+          <span>IVS Input URL</span>
+          <input type="url" id="ivs-url" placeholder="https://xxxx.channel.media.amazonaws.com/" />
+        </label>
+        <label class="field">
+          <span>API Key <small>(optional in dev)</small></span>
+          <input type="password" id="api-key" placeholder="x-service-key" autocomplete="off" />
+        </label>
+        <label class="field checkbox-field">
+          <input type="checkbox" id="auto-restart" checked />
+          <span>Auto-restart on failure</span>
+        </label>
+        <label class="field">
+          <span>Max restarts</span>
+          <input type="number" id="max-restarts" value="5" min="1" max="20" />
+        </label>
+      </div>
+    </section>
+
+    <section class="card youtube-card">
+      <div class="card-header">
+        <div class="platform-title">
+          <span class="platform-icon youtube">▶</span>
+          <h2>YouTube</h2>
+        </div>
+        <div class="youtube-status" id="youtube-status">
+          <span class="dot offline"></span>
+          <span>Not connected</span>
+        </div>
+      </div>
+      <p class="hint">Connect YouTube once, enter IVS URL, then <strong>Go Live</strong> — creates the Studio event, stream key, RTMP, and LIVE status automatically.</p>
+      <div class="form-grid youtube-options">
+        <label class="field span-2">
+          <span>Event title (optional)</span>
+          <input type="text" id="youtube-event-title" placeholder="Auto-generated if empty" />
+        </label>
+        <label class="field">
+          <span>Visibility</span>
+          <select id="youtube-privacy">
+            <option value="unlisted" selected>Unlisted</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+          </select>
+        </label>
+      </div>
+      <div class="btn-row">
+        <a class="btn btn-youtube" id="youtube-connect" href="/auth/youtube">Connect YouTube</a>
+        <button class="btn btn-secondary" id="youtube-fetch" disabled>Go Live on YouTube</button>
+        <button class="btn btn-ghost" id="youtube-disconnect" disabled>Disconnect</button>
+      </div>
+      <div class="stream-details" id="youtube-details" hidden>
+        <h3>Stream details</h3>
+        <dl class="details-grid" id="youtube-details-grid"></dl>
+        <pre class="details-json" id="youtube-details-json"></pre>
+      </div>
+    </section>
+
+    <section class="platforms-section">
+      <h2 class="section-title">Platforms</h2>
+      <div class="platform-grid" id="platform-grid"></div>
+    </section>
+
+    <div class="btn-row global-actions">
+      <button class="btn btn-danger" id="stop-all">Stop All Streams</button>
+      <button class="btn btn-ghost" id="refresh-status">Refresh Status</button>
+    </div>
+
+    <div class="bottom-grid">
+      <section class="card">
+        <h2>Stream Status</h2>
+        <pre class="status-output" id="status-output">Loading…</pre>
+      </section>
+      <section class="card logs-card">
+        <div class="card-header">
+          <h2>Live Logs</h2>
+          <button class="btn btn-ghost btn-sm" id="clear-logs">Clear</button>
+        </div>
+        <div class="logs-output" id="logs-output"></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="/app.js?v=7"></script>
+</body>
+</html>

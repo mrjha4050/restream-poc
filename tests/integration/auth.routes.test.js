@@ -13,6 +13,49 @@ jest.mock('../../src/services/youtube.service', () => ({
   exchangeCodeForTokens: jest.fn(),
   getUserEmail: jest.fn(),
   fetchLiveStreamKey: jest.fn(),
+  fetchLiveStreamDetails: jest.fn(() =>
+    Promise.resolve({
+      key: 'yt-key-123',
+      rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2/yt-key-123',
+      stream: {
+        id: 'stream-1',
+        title: 'My Live Stream',
+        status: 'active',
+        cdn: { streamName: 'yt-key-123' },
+      },
+      broadcast: { id: 'broadcast-1', title: 'My Broadcast', lifeCycleStatus: 'ready' },
+      streams: [],
+      autoCreated: { stream: false, broadcast: false },
+    })
+  ),
+  getLivePipelineStatus: jest.fn(() =>
+    Promise.resolve({
+      ingest: { streamStatus: 'active', healthStatus: 'good' },
+      broadcast: { lifeCycleStatus: 'live' },
+    })
+  ),
+  ensureYouTubeLiveSetup: jest.fn(() =>
+    Promise.resolve({
+      key: 'yt-key-123',
+      rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2/yt-key-123',
+      stream: {
+        id: 'stream-1',
+        title: 'My Live Stream',
+        status: 'active',
+        cdn: { streamName: 'yt-key-123' },
+      },
+      broadcast: { id: 'broadcast-1', title: 'My Broadcast', lifeCycleStatus: 'ready' },
+      streams: [],
+      autoCreated: { stream: false, broadcast: false },
+    })
+  ),
+  prepareYouTubeBroadcast: jest.fn(() =>
+    Promise.resolve({ broadcastId: 'broadcast-1', lifeCycleStatus: 'testing', alreadyLive: false })
+  ),
+  goLiveYouTubeBroadcast: jest.fn(() =>
+    Promise.resolve({ broadcastId: 'broadcast-1', lifeCycleStatus: 'live', ingestActive: true })
+  ),
+  completeYouTubeBroadcast: jest.fn(() => Promise.resolve()),
   isConfigured: jest.fn(() => true),
   createOAuth2Client: jest.fn(),
 }));
@@ -119,14 +162,15 @@ describe('auth routes', () => {
       expect(res.body).toEqual({ connected: true, email: 'user@youtube.com' });
     });
 
-    it('returns disconnected when getUserEmail fails', async () => {
+    it('returns connected when getUserEmail fails but session has tokens', async () => {
       youtubeService.exchangeCodeForTokens.mockResolvedValue({ access_token: 'tok' });
-      youtubeService.getUserEmail.mockRejectedValue(new Error('token expired'));
+      youtubeService.getUserEmail.mockRejectedValue(new Error('insufficient scopes'));
       const agent = request.agent(app);
       await agent.get('/auth/youtube/callback?code=valid-code');
 
       const res = await agent.get('/auth/youtube/status');
-      expect(res.body).toEqual({ connected: false, email: null });
+      expect(res.body.connected).toBe(true);
+      expect(res.body.email).toBeNull();
     });
   });
 
@@ -136,24 +180,22 @@ describe('auth routes', () => {
       expect(res.status).toBe(401);
     });
 
-    it('returns stream key without auto-start when ivsUrl omitted', async () => {
+    it('returns stream details without auto-start when ivsUrl omitted', async () => {
       youtubeService.exchangeCodeForTokens.mockResolvedValue({ access_token: 'tok' });
-      youtubeService.fetchLiveStreamKey.mockResolvedValue('yt-key-123');
       const agent = request.agent(app);
       await agent.get('/auth/youtube/callback?code=valid-code');
 
       const res = await agent.post('/auth/youtube/fetch-key').send({});
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({
-        key: 'yt-key-123',
-        message: 'Stream key fetched',
-        autoStarted: false,
-      });
+      expect(res.body.key).toBe('yt-key-123');
+      expect(res.body.stream.title).toBe('My Live Stream');
+      expect(res.body.broadcast.title).toBe('My Broadcast');
+      expect(res.body.message).toBe('Stream details fetched');
+      expect(res.body.autoStarted).toBe(false);
     });
 
     it('auto-starts stream when ivsUrl provided', async () => {
       youtubeService.exchangeCodeForTokens.mockResolvedValue({ access_token: 'tok' });
-      youtubeService.fetchLiveStreamKey.mockResolvedValue('yt-key-123');
       const agent = request.agent(app);
       await agent.get('/auth/youtube/callback?code=valid-code');
 
@@ -162,12 +204,16 @@ describe('auth routes', () => {
       });
       expect(res.status).toBe(200);
       expect(res.body.autoStarted).toBe(true);
+      expect(res.body.pipeline).toBe('starting');
+      expect(res.body.studioVisible).toBe(false);
       expect(ffmpegService.startPlatform).toHaveBeenCalled();
+
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(youtubeService.goLiveYouTubeBroadcast).toHaveBeenCalled();
     });
 
     it('returns 409 when youtube already streaming', async () => {
       youtubeService.exchangeCodeForTokens.mockResolvedValue({ access_token: 'tok' });
-      youtubeService.fetchLiveStreamKey.mockResolvedValue('yt-key-123');
       ffmpegService.isPlatformActive.mockReturnValue(true);
       const agent = request.agent(app);
       await agent.get('/auth/youtube/callback?code=valid-code');
@@ -180,7 +226,6 @@ describe('auth routes', () => {
 
     it('returns 503 when ffmpeg start fails', async () => {
       youtubeService.exchangeCodeForTokens.mockResolvedValue({ access_token: 'tok' });
-      youtubeService.fetchLiveStreamKey.mockResolvedValue('yt-key-123');
       ffmpegService.startPlatform.mockReturnValue({ ok: false, reason: 'ffmpeg_unavailable' });
       const agent = request.agent(app);
       await agent.get('/auth/youtube/callback?code=valid-code');
@@ -195,7 +240,7 @@ describe('auth routes', () => {
       youtubeService.exchangeCodeForTokens.mockResolvedValue({ access_token: 'tok' });
       const err = new Error('No YouTube live stream found.');
       err.statusCode = 404;
-      youtubeService.fetchLiveStreamKey.mockRejectedValue(err);
+      youtubeService.ensureYouTubeLiveSetup.mockRejectedValue(err);
       const agent = request.agent(app);
       await agent.get('/auth/youtube/callback?code=valid-code');
 

@@ -30,6 +30,55 @@ function clearRestartTimer(platformId) {
   }
 }
 
+function isHlsInput(url) {
+  return /\.m3u8(\?|$)/i.test(url) || url.includes('playlist');
+}
+
+function buildFfmpegArgs(platformId, ivsUrl, outputUrl) {
+  const inputArgs = isHlsInput(ivsUrl)
+    ? [
+        '-reconnect', '1',
+        '-reconnect_streamed', '1',
+        '-reconnect_delay_max', '5',
+        '-i', ivsUrl,
+      ]
+    : [
+        '-reconnect', '1',
+        '-reconnect_streamed', '1',
+        '-reconnect_delay_max', '5',
+        '-re', '-i', ivsUrl,
+      ];
+
+  if (platformId === 'youtube') {
+    return [
+      ...inputArgs,
+      '-c:v', 'libx264',
+      '-preset', 'veryfast',
+      '-tune', 'zerolatency',
+      '-pix_fmt', 'yuv420p',
+      '-g', '60',
+      '-keyint_min', '60',
+      '-maxrate', '2500k',
+      '-bufsize', '5000k',
+      '-vf', 'scale=-2:720',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+      '-ar', '44100',
+      '-ac', '2',
+      '-f', 'flv',
+      outputUrl,
+    ];
+  }
+
+  return [
+    ...inputArgs,
+    '-c:v', 'copy',
+    '-c:a', 'copy',
+    '-f', 'flv',
+    outputUrl,
+  ];
+}
+
 function launchPlatformFfmpeg(platformId, ivsUrl, outputUrl, options) {
   const {
     autoRestart = true,
@@ -38,17 +87,7 @@ function launchPlatformFfmpeg(platformId, ivsUrl, outputUrl, options) {
     isRestart = false,
   } = options;
 
-  const ffmpegArgs = [
-    '-reconnect', '1',
-    '-reconnect_streamed', '1',
-    '-reconnect_delay_max', '2',
-    '-re',
-    '-i', ivsUrl,
-    '-c:v', 'copy',
-    '-c:a', 'copy',
-    '-f', 'flv',
-    outputUrl,
-  ];
+  const ffmpegArgs = buildFfmpegArgs(platformId, ivsUrl, outputUrl);
 
   const ffmpeg = spawn('ffmpeg', ffmpegArgs);
 

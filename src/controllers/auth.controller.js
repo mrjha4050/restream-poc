@@ -1,7 +1,11 @@
 const youtubeService = require('../services/youtube.service');
 const facebookService = require('../services/facebook.service');
 const ffmpegService = require('../services/ffmpeg.service');
-const { buildOutputUrl } = require('../constants/platforms');
+const {
+  setPipelineState,
+  getPipelineState,
+  clearPipelineState,
+} = require('../services/youtube.pipeline');
 const { addLog } = require('../services/log.service');
 
 function redirectToYouTube(req, res, next) {
@@ -11,6 +15,12 @@ function redirectToYouTube(req, res, next) {
   } catch (err) {
     next(err);
   }
+}
+
+function saveSession(req) {
+  return new Promise((resolve, reject) => {
+    req.session.save((err) => (err ? reject(err) : resolve()));
+  });
 }
 
 async function handleYouTubeCallback(req, res) {
@@ -24,6 +34,7 @@ async function handleYouTubeCallback(req, res) {
     const tokens = await youtubeService.exchangeCodeForTokens(code);
     req.session.youtubeTokens = tokens;
     addLog('YouTube OAuth tokens stored in session', 'connection');
+    await saveSession(req);
     res.redirect('/?youtube=connected');
   } catch (err) {
     addLog(`YouTube token exchange failed: ${err.message}`, 'error');
@@ -37,12 +48,14 @@ async function getYouTubeStatus(req, res) {
     return res.json({ connected: false, email: null });
   }
 
+  let email = null;
   try {
-    const email = await youtubeService.getUserEmail(tokens);
-    res.json({ connected: true, email });
-  } catch {
-    res.json({ connected: false, email: null });
+    email = await youtubeService.getUserEmail(tokens);
+  } catch (err) {
+    addLog(`YouTube profile lookup failed: ${err.message}`, 'error', 'youtube');
   }
+
+  return res.json({ connected: true, email });
 }
 
 async function fetchYouTubeKey(req, res, next) {
@@ -51,17 +64,59 @@ async function fetchYouTubeKey(req, res, next) {
     return res.status(401).json({ message: 'Not authenticated with YouTube' });
   }
 
-  const { ivsUrl, autoRestart = true, maxRestarts = 5 } = req.body || {};
+  const {
+    ivsUrl,
+    autoRestart = true,
+    maxRestarts = 5,
+    broadcastTitle,
+    privacyStatus = 'unlisted',
+  } = req.body || {};
 
   try {
-    const streamKey = await youtubeService.fetchLiveStreamKey(tokens);
-    addLog('YouTube stream key fetched via OAuth', 'connection', 'youtube');
+    const details = await youtubeService.ensureYouTubeLiveSetup(tokens, {
+      createIfMissing: true,
+      broadcastTitle,
+      privacyStatus,
+    });
+    const { key: streamKey, stream, broadcast, streams, rtmpUrl, autoCreated } = details;
+
+    if (autoCreated.stream || autoCreated.broadcast) {
+      addLog(
+        `YouTube auto-setup: stream=${autoCreated.stream}, event=${autoCreated.broadcast}`,
+        'connection',
+        'youtube'
+      );
+    }
+    addLog(
+      `YouTube ready: ${stream.title || stream.id}`,
+      'connection',
+      'youtube'
+    );
+
+    const payload = {
+      key: streamKey,
+      rtmpUrl,
+      stream,
+      broadcast,
+      streams,
+      autoCreated,
+    };
 
     if (ivsUrl) {
-      const outputUrl = buildOutputUrl('youtube', streamKey);
+      const outputUrl = rtmpUrl;
       if (ffmpegService.isPlatformActive('youtube')) {
         return res.status(409).json({ message: 'YouTube is already streaming' });
       }
+
+      const broadcastId = broadcast?.id;
+      req.session.youtubeLiveBroadcastId = broadcastId;
+      req.session.youtubeLiveStreamId = stream.id;
+
+      setPipelineState(req.sessionID, {
+        phase: 'starting',
+        broadcastId,
+        streamId: stream.id,
+      });
 
       const result = ffmpegService.startPlatform('youtube', ivsUrl.trim(), outputUrl, {
         autoRestart,
@@ -69,25 +124,126 @@ async function fetchYouTubeKey(req, res, next) {
       });
 
       if (!result.ok) {
+        clearPipelineState(req.sessionID);
         return res.status(503).json({ message: 'Failed to start YouTube stream' });
       }
 
+      addLog('FFmpeg started (YouTube H.264/AAC) — go-live running in background', 'info', 'youtube');
+
+      const sessionId = req.sessionID;
+      const sessionRef = req.session;
+
+      setImmediate(() => {
+        runBackgroundGoLive({
+          sessionId,
+          sessionRef,
+          tokens,
+          broadcastId,
+          streamId: stream.id,
+          saveSession: () =>
+            new Promise((resolve, reject) => {
+              sessionRef.save((err) => (err ? reject(err) : resolve()));
+            }),
+        });
+      });
+
+      await saveSession(req);
+
       return res.json({
-        key: streamKey,
-        message: 'YouTube stream started',
+        ...payload,
+        broadcast: {
+          ...broadcast,
+          id: broadcastId,
+          lifeCycleStatus: broadcast?.lifeCycleStatus || 'starting',
+        },
+        message: 'FFmpeg started — going live on YouTube (watch logs)',
         autoStarted: true,
+        pipeline: 'starting',
+        studioVisible: false,
       });
     }
 
-    res.json({ key: streamKey, message: 'Stream key fetched', autoStarted: false });
+    res.json({
+      ...payload,
+      message: 'Stream details fetched',
+      autoStarted: false,
+    });
   } catch (err) {
     addLog(`YouTube API error: ${err.message}`, 'error', 'youtube');
     next(err);
   }
 }
 
+async function runBackgroundGoLive({
+  sessionId,
+  sessionRef,
+  tokens,
+  broadcastId,
+  streamId,
+  saveSession,
+}) {
+  setPipelineState(sessionId, { phase: 'waiting_ingest', broadcastId, streamId });
+
+  try {
+    const liveState = await youtubeService.goLiveYouTubeBroadcast(
+      tokens,
+      broadcastId,
+      streamId,
+      { deferTesting: true }
+    );
+
+    setPipelineState(sessionId, {
+      phase: 'live',
+      broadcastId,
+      streamId,
+      lifeCycleStatus: liveState.lifeCycleStatus,
+    });
+    sessionRef.youtubeLiveBroadcastId = broadcastId;
+    await saveSession();
+  } catch (err) {
+    addLog(`YouTube go-live failed: ${err.message}`, 'error', 'youtube');
+    setPipelineState(sessionId, {
+      phase: 'failed',
+      broadcastId,
+      streamId,
+      error: err.message,
+    });
+  }
+}
+
+async function getYouTubePipelineStatus(req, res, next) {
+  const tokens = req.session.youtubeTokens;
+  if (!tokens) {
+    return res.status(401).json({ message: 'Not authenticated with YouTube' });
+  }
+
+  try {
+    const pipeline = getPipelineState(req.sessionID);
+    const streamId = req.session.youtubeLiveStreamId || pipeline.streamId;
+    const broadcastId = req.session.youtubeLiveBroadcastId || pipeline.broadcastId;
+
+    const live = await youtubeService.getLivePipelineStatus(tokens, {
+      streamId,
+      broadcastId,
+    });
+
+    res.json({
+      pipeline,
+      ffmpegRunning: ffmpegService.isPlatformActive('youtube'),
+      ingest: live.ingest,
+      broadcast: live.broadcast,
+      studioVisible: live.broadcast?.lifeCycleStatus === 'live',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 function disconnectYouTube(req, res) {
+  clearPipelineState(req.sessionID);
   delete req.session.youtubeTokens;
+  delete req.session.youtubeLiveBroadcastId;
+  delete req.session.youtubeLiveStreamId;
   addLog('YouTube OAuth session cleared', 'disconnection', 'youtube');
   res.json({ message: 'YouTube disconnected' });
 }
@@ -274,7 +430,9 @@ module.exports = {
   handleYouTubeCallback,
   getYouTubeStatus,
   fetchYouTubeKey,
+  getYouTubePipelineStatus,
   disconnectYouTube,
+  runBackgroundGoLive,
   redirectToFacebook,
   handleFacebookCallback,
   getFacebookStatus,

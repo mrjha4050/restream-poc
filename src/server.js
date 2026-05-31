@@ -11,11 +11,35 @@ const ffmpegService = require('./services/ffmpeg.service');
 const { addLog } = require('./services/log.service');
 const logger = require('./utils/logger');
 
+function canonicalHostRedirect(req, res, next) {
+  if (
+    process.env.NODE_ENV === 'test' ||
+    config.nodeEnv === 'production' ||
+    config.nodeEnv === 'test'
+  ) {
+    return next();
+  }
+  const host = req.headers.host || '';
+  const pathOnly = (req.originalUrl || req.url || '').split('?')[0];
+  const isUiPage =
+    pathOnly === '/' ||
+    pathOnly === '/index.html' ||
+    pathOnly.endsWith('.css') ||
+    pathOnly.endsWith('.js');
+
+  if (host.startsWith('127.0.0.1:') && isUiPage) {
+    const port = host.split(':')[1] || String(config.port);
+    return res.redirect(301, `http://localhost:${port}${req.originalUrl}`);
+  }
+  return next();
+}
+
 function createApp() {
   const app = express();
 
   app.use(requestId);
-  app.use(cors());
+  app.use(canonicalHostRedirect);
+  app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());
 
   app.use(
@@ -25,6 +49,8 @@ function createApp() {
       saveUninitialized: false,
       cookie: {
         secure: config.nodeEnv === 'production',
+        httpOnly: true,
+        sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000,
       },
     })

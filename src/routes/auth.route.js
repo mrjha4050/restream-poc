@@ -8,6 +8,7 @@ router.get('/youtube', authController.redirectToYouTube);
 router.get('/youtube/callback', asyncHandler(authController.handleYouTubeCallback));
 router.get('/youtube/status', asyncHandler(authController.getYouTubeStatus));
 router.post('/youtube/fetch-key', asyncHandler(authController.fetchYouTubeKey));
+router.get('/youtube/pipeline', asyncHandler(authController.getYouTubePipelineStatus));
 router.post('/youtube/disconnect', authController.disconnectYouTube);
 
 router.get('/facebook', authController.redirectToFacebook);

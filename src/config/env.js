@@ -8,9 +8,11 @@ const envLocalPath = path.join(rootDir, '.env.local');
 
 if (fs.existsSync(envPath)) {
   dotenv.config({ path: envPath });
-} else if (fs.existsSync(envLocalPath)) {
-  dotenv.config({ path: envLocalPath });
-} else {
+}
+if (fs.existsSync(envLocalPath)) {
+  dotenv.config({ path: envLocalPath, override: true });
+}
+if (!fs.existsSync(envPath) && !fs.existsSync(envLocalPath)) {
   dotenv.config();
 }
 

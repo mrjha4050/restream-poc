@@ -13,8 +13,13 @@ function isPublicPath(path) {
   );
 }
 
+function requestPath(req) {
+  const fromOriginal = (req.originalUrl || req.url || '').split('?')[0];
+  return fromOriginal || req.path || '';
+}
+
 function serviceAuth(req, res, next) {
-  if (isPublicPath(req.path)) {
+  if (isPublicPath(requestPath(req))) {
     return next();
   }
 
@@ -25,7 +30,9 @@ function serviceAuth(req, res, next) {
     return next();
   }
 
-  const providedKey = req.headers['x-service-key'];
+  const providedKey =
+    req.headers['x-service-key'] ||
+    (req.method === 'GET' ? req.query.key : null);
   if (!providedKey || providedKey !== config.serviceApiKey) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
@@ -34,5 +41,6 @@ function serviceAuth(req, res, next) {
 }
 
 serviceAuth.isPublicPath = isPublicPath;
+serviceAuth.requestPath = requestPath;
 
 module.exports = serviceAuth;

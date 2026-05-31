@@ -209,7 +209,7 @@
           "response": []
         },
         {
-          "name": "Fetch YouTube Stream Key & Start",
+          "name": "Fetch YouTube Stream Details & Start",
           "request": {
             "method": "POST",
             "header": [
@@ -227,7 +227,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["auth", "youtube", "fetch-key"]
             },
-            "description": "Fetch stream key from YouTube API and optionally auto-start stream"
+            "description": "Fetch stream key, RTMP URL, stream/broadcast metadata from YouTube API and optionally auto-start restream"
           },
           "response": []
         },

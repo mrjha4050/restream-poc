@@ -66,11 +66,12 @@ describe('ffmpeg.service', () => {
       const proc = createMockProcess();
       spawn.mockReturnValue(proc);
 
-      const result = ffmpegService.startPlatform('youtube', 'https://ivs/', 'rtmp://out/key');
+      const ivs = 'https://channel.playback.live-video.net/stream.m3u8';
+      const result = ffmpegService.startPlatform('youtube', ivs, 'rtmp://out/key');
       expect(result).toEqual({ ok: true });
       expect(spawn).toHaveBeenCalledWith(
         'ffmpeg',
-        expect.arrayContaining(['-i', 'https://ivs/', 'rtmp://out/key'])
+        expect.arrayContaining(['-i', ivs, '-c:v', 'libx264', '-c:a', 'aac', 'rtmp://out/key'])
       );
       expect(ffmpegService.isPlatformActive('youtube')).toBe(true);
       expect(ffmpegService.getStatus().platforms.youtube.running).toBe(true);
