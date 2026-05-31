@@ -1,0 +1,263 @@
+{
+  "info": {
+    "name": "Restream POC API",
+    "description": "Live streaming rebroadcast service - stream from AWS IVS to multiple platforms (YouTube, Twitch, Facebook, Custom RTMP)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Platforms",
+      "item": [
+        {
+          "name": "Get All Platforms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/platforms",
+              "host": ["{{baseUrl}}"],
+              "path": ["platforms"]
+            },
+            "description": "List all supported streaming platforms and their RTMP base URLs"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Stream Control",
+      "item": [
+        {
+          "name": "Start Stream to Platform",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ivsUrl\": \"https://123456789.channel.media.amazonaws.com/\",\n  \"key\": \"stream-key-here\",\n  \"autoRestart\": true,\n  \"maxRestarts\": 5,\n  \"customUrl\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/platforms/:id/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["platforms", ":id", "start"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "youtube",
+                  "description": "Platform ID: youtube, twitch, facebook, or custom"
+                }
+              ]
+            },
+            "description": "Start streaming from IVS input to a specific platform"
+          },
+          "response": []
+        },
+        {
+          "name": "Stop Stream to Platform",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/platforms/:id/stop",
+              "host": ["{{baseUrl}}"],
+              "path": ["platforms", ":id", "stop"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "youtube",
+                  "description": "Platform ID: youtube, twitch, facebook, or custom"
+                }
+              ]
+            },
+            "description": "Stop streaming to a specific platform"
+          },
+          "response": []
+        },
+        {
+          "name": "Stop All Streams",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stop",
+              "host": ["{{baseUrl}}"],
+              "path": ["stop"]
+            },
+            "description": "Stop all active streams across all platforms"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Status & Logs",
+      "item": [
+        {
+          "name": "Get Stream Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["status"]
+            },
+            "description": "Get current stream status for all platforms including uptime and restart counts"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Logs (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs"]
+            },
+            "description": "Retrieve historical log buffer (max 200 entries)"
+          },
+          "response": []
+        },
+        {
+          "name": "Stream Logs (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stream-logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["stream-logs"]
+            },
+            "description": "Server-Sent Events endpoint for live FFmpeg output (real-time logs)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "YouTube OAuth",
+      "item": [
+        {
+          "name": "YouTube Auth URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/youtube",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "youtube"]
+            },
+            "description": "Redirect to Google OAuth consent screen (use in browser)"
+          },
+          "response": []
+        },
+        {
+          "name": "YouTube OAuth Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/youtube/callback?code=AUTH_CODE&state=STATE",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "youtube", "callback"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "AUTH_CODE",
+                  "description": "Authorization code from Google OAuth"
+                },
+                {
+                  "key": "state",
+                  "value": "STATE",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "OAuth redirect handler - exchanges code for tokens (handled automatically)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get YouTube Auth Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/youtube/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "youtube", "status"]
+            },
+            "description": "Check if YouTube is authenticated and get user email"
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch YouTube Stream Key & Start",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ivsUrl\": \"https://123456789.channel.media.amazonaws.com/\",\n  \"autoRestart\": true,\n  \"maxRestarts\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/youtube/fetch-key",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "youtube", "fetch-key"]
+            },
+            "description": "Fetch stream key from YouTube API and optionally auto-start stream"
+          },
+          "response": []
+        },
+        {
+          "name": "YouTube Disconnect",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/youtube/disconnect",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "youtube", "disconnect"]
+            },
+            "description": "Clear YouTube OAuth session"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}
