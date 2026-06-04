@@ -23,9 +23,9 @@ function canonicalHostRedirect(req, res, next) {
   const pathOnly = (req.originalUrl || req.url || '').split('?')[0];
   const isUiPage =
     pathOnly === '/' ||
-    pathOnly === '/index.html' ||
-    pathOnly.endsWith('.css') ||
-    pathOnly.endsWith('.js');
+    pathOnly === '/ui' ||
+    pathOnly === '/ui/' ||
+    pathOnly.startsWith('/ui/');
 
   if (host.startsWith('127.0.0.1:') && isUiPage) {
     const port = host.split(':')[1] || String(config.port);
@@ -58,7 +58,8 @@ function createApp() {
 
   const publicDir = path.join(__dirname, 'public');
   if (fs.existsSync(publicDir)) {
-    app.use(express.static(publicDir));
+    app.get('/', (_req, res) => res.redirect(302, '/ui'));
+    app.use('/ui', express.static(publicDir, { index: 'index.html' }));
   }
 
   app.use(serviceAuth);

@@ -27,7 +27,7 @@ async function handleYouTubeCallback(req, res) {
   const { code, error } = req.query;
   if (error || !code) {
     addLog(`YouTube OAuth error: ${error || 'no code'}`, 'error');
-    return res.redirect('/?youtube=error');
+    return res.redirect('/ui?youtube=error');
   }
 
   try {
@@ -35,10 +35,10 @@ async function handleYouTubeCallback(req, res) {
     req.session.youtubeTokens = tokens;
     addLog('YouTube OAuth tokens stored in session', 'connection');
     await saveSession(req);
-    res.redirect('/?youtube=connected');
+    res.redirect('/ui?youtube=connected');
   } catch (err) {
     addLog(`YouTube token exchange failed: ${err.message}`, 'error');
-    res.redirect('/?youtube=error');
+    res.redirect('/ui?youtube=error');
   }
 }
 

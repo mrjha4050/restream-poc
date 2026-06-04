@@ -118,13 +118,13 @@ describe('auth routes', () => {
     it('redirects to error when OAuth returns error', async () => {
       const res = await request(app).get('/auth/youtube/callback?error=access_denied');
       expect(res.status).toBe(302);
-      expect(res.headers.location).toBe('/?youtube=error');
+      expect(res.headers.location).toBe('/ui?youtube=error');
     });
 
     it('redirects to error when code is missing', async () => {
       const res = await request(app).get('/auth/youtube/callback');
       expect(res.status).toBe(302);
-      expect(res.headers.location).toBe('/?youtube=error');
+      expect(res.headers.location).toBe('/ui?youtube=error');
     });
 
     it('stores tokens and redirects to connected on success', async () => {
@@ -132,7 +132,7 @@ describe('auth routes', () => {
       const agent = request.agent(app);
       const res = await agent.get('/auth/youtube/callback?code=valid-code');
       expect(res.status).toBe(302);
-      expect(res.headers.location).toBe('/?youtube=connected');
+      expect(res.headers.location).toBe('/ui?youtube=connected');
 
       const statusRes = await agent.get('/auth/youtube/status');
       expect(youtubeService.getUserEmail).toHaveBeenCalled();
@@ -141,7 +141,7 @@ describe('auth routes', () => {
     it('redirects to error when token exchange fails', async () => {
       youtubeService.exchangeCodeForTokens.mockRejectedValue(new Error('exchange failed'));
       const res = await request(app).get('/auth/youtube/callback?code=bad-code');
-      expect(res.headers.location).toBe('/?youtube=error');
+      expect(res.headers.location).toBe('/ui?youtube=error');
     });
   });
 

@@ -64,7 +64,7 @@ function hasLocalYouTubeFlag() {
 function warnIfWrongHost() {
   const host = window.location.hostname;
   if (host === '127.0.0.1') {
-    showToast('Use http://localhost:3000 so YouTube login cookies work', 'error');
+    showToast('Use http://localhost:3000/ui so YouTube login cookies work', 'error');
   }
 }
 
@@ -269,7 +269,7 @@ async function updateYouTubeStatus(retry = 0) {
 
     if (!connected && hasLocalYouTubeFlag()) {
       $('#youtube-status').innerHTML =
-        '<span class="dot offline"></span><span>Session lost — open http://localhost:3000 and connect again</span>';
+        '<span class="dot offline"></span><span>Session lost — open http://localhost:3000/ui and connect again</span>';
       markYouTubeConnected(false);
       setYouTubeUi(false, 'Not connected');
     }
@@ -463,13 +463,13 @@ async function handleOAuthRedirect() {
   if (yt === 'connected') {
     markYouTubeConnected(true);
     setYouTubeUi(true, 'YouTube connected');
-    window.history.replaceState({}, '', '/');
+    window.history.replaceState({}, '', '/ui');
     await updateYouTubeStatus();
     showToast('YouTube connected — you can fetch your stream key now', 'success');
   } else if (yt === 'error') {
     markYouTubeConnected(false);
     showToast('YouTube connection failed', 'error');
-    window.history.replaceState({}, '', '/');
+    window.history.replaceState({}, '', '/ui');
   }
 }
 
